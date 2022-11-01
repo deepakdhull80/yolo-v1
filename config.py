@@ -1,3 +1,15 @@
+
+yolo_training_enable = False
+#model
+n_classes = 12
+input_channel = 3
+bottle_neck_feature_size = 4096
+# data
+image_size = 224
+data_base_path = "/home/deepakdhull/practice/computer_vision/object-detection/data"
+image_base_path = "/home/deepakdhull/practice/computer_vision/object-detection/data/images"
+batch_size = 14
+
 blocks = [
         {
             'channels':[64],
@@ -42,9 +54,3 @@ blocks = [
             'max_pool':False
         }
     ]
-
-
-classifier = {
-    'bottleneck_feature' : 4096,
-    'n_class': 1024
-}
