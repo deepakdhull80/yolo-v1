@@ -4,10 +4,12 @@ yolo_training_enable = False
 n_classes = 12
 input_channel = 3
 bottle_neck_feature_size = 4096
+epochs = 150
+
 # data
 image_size = 224
 data_base_path = "/home/deepakdhull/practice/computer_vision/object-detection/data"
-image_base_path = "/home/deepakdhull/practice/computer_vision/object-detection/data/images"
+image_base_path = "/home/deepakdhull/practice/computer_vision/object-detection/data/train2017"
 batch_size = 14
 
 blocks = [

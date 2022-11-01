@@ -75,16 +75,10 @@ class ImageDataset(Dataset):
         ])
 
         self.target2indx = t2i
-        if not self.target2indx:
-            self.target2indx = self.get_tar2indx()
         
 
-    def get_tar2indx(self):
-        return {name:idx for idx,name in enumerate(self.annotation_df['supercategory'])}
-
-
     def __getitem__(self, index):
-        data = self.image_df.loc[index].to_dict()
+        data = self.image_df.iloc[index].to_dict()
         
         image = torchvision.io.read_image(f"{self.image_path}/{data['file_name']}")
         
@@ -92,23 +86,37 @@ class ImageDataset(Dataset):
         t = []
         areas = []
 
-        for _, row in annotation.iterrows():
-            bbox = row['bbox']
-            _image = self.decode(image, bbox)
-            area = row['area']
-            _class = row['supercategory']
-            t.append([_image, _class])
-            areas.append(area)
-        
-        idx = torch.argmax(areas)
-        image, target = t[idx]
-        del t, area
-        target = self.target2indx(target)
+        # for _, row in annotation.iterrows():
+        #     bbox = row['bbox']
+        #     try:
+        #         _image = self.decode(image, bbox)
+        #     except Exception as e:
+        #         continue
+        #     area = row['area']
+        #     _class = row['supercategory']
+        #     t.append([_image, _class])
+        #     areas.append(area)
+        # if len(areas) == 0:
+        #     return None, None
+        # idx = np.argmax(areas)
+        # # idx = np.random.choice(np.arange(len(t)))
+        # image, target = t[idx]
+        # del t, area
+        try:
+            target = annotation['supercategory'].value_counts().reset_index().iloc[0]['index']
+        except Exception as e:
+            target = annotation['supercategory'].iloc[0] if annotation.shape[0]>0 else 'kitchen'
+        image = self.transform(image)
+        image = image/ 255.0
+        target = self.target2indx[target]
         return image, target
 
     def decode(self, image, bbox):
         _, h, w = image.shape
-        image = image[:,bbox[0]:bbox[0]+bbox[2], bbox[1]:bbox[1]+bbox[3]]
+        assert h!=0, "Height should be greater than zero"
+        assert w!=0, "Width should be greater than zero"
+        # print(int(bbox[0]),int(bbox[0]+bbox[2]), int(bbox[1]), int(bbox[1]+bbox[3]))
+        image = image[:, int(bbox[0]):int(bbox[0]+bbox[2]), int(bbox[1]):int(bbox[1]+bbox[3])]
         image = self.transform(image)
         image = image/ 255.0
         return image
