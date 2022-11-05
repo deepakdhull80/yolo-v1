@@ -5,6 +5,7 @@ n_classes = 12
 input_channel = 3
 bottle_neck_feature_size = 4096
 epochs = 150
+classifier_model_save_path = "/home/deepakdhull/practice/computer_vision/object-detection/yolo-v1/checkpoints/classifier.pt"
 
 # data
 image_size = 224

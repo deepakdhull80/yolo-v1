@@ -108,6 +108,8 @@ class ImageDataset(Dataset):
             target = annotation['supercategory'].iloc[0] if annotation.shape[0]>0 else 'kitchen'
         image = self.transform(image)
         image = image/ 255.0
+        if image.shape[0] != 3:
+            return None, None
         target = self.target2indx[target]
         return image, target
 

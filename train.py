@@ -65,21 +65,18 @@ val_ds = YoloDataset(
     )
 
 def collate_fn(data):
-    len_batch = len(data) # original data length
-    data = list(filter (lambda x:(x[0] is not None)&(x[0][0]!=3), data)) # filter out all the Nones
-    # if len_batch > len(batch): # if there are samples missing just use existing members, doesn't work if you reject every sample in a batch
-    #     diff = len_batch - len(batch)
-    #     for i in range(diff):
-    #         batch = batch + batch[:diff]
-    return torch.utils.data.dataloader.default_collate(data)
+    update_data = [(image, label) for image,label in data if image is not None]
+    return torch.utils.data.dataloader.default_collate(update_data)
 
 train_dl = torch.utils.data.DataLoader(
     train_ds, batch_size = config.batch_size,
-    shuffle=True
+    shuffle=True,
+    collate_fn=collate_fn
 )
 
 val_dl = torch.utils.data.DataLoader(
     val_ds, batch_size = config.batch_size,
+    collate_fn=collate_fn
 )
 
 loss_fn = YoloLoss(config.s,config.b,config.n_class,config.lambda_coord, config.noobj) if config.yolo_training_enable else \
@@ -123,3 +120,7 @@ for epoch in range(config.epochs):
         total_val_loss+=_loss
         iter.set_description(f"loss: {_loss:.2f} total_loss: {total_val_loss/(idx+1):.2f}")
     ## model save
+    if val_loss > total_val_loss:
+        val_loss = total_val_loss
+        torch.save(config.classifier_model_save_path)
+        print(f"Model saved, {config.classifier_model_save_path}")
