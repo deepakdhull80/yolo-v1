@@ -7,11 +7,11 @@ class Convblock(nn.Module):
 
         tmp_seq = [
             nn.Conv2d(input_c, output_c, kernel,stride, padding),
-            nn.LeakyReLU()
+            nn.ReLU()
         ]
         if bn:
             tmp_seq.append(
-                nn.BatchNorm2d(output_c)
+                nn.LayerNorm(output_c)
             )
 
         self.conv = nn.Sequential(*tmp_seq)
@@ -23,8 +23,20 @@ class Convblock(nn.Module):
 
 class YoloBlock(nn.Module):
     def __init__(self, in_channel=3,out_channels=[],kernels=[], strides=[],bn=True, max_pool=None) -> None:
+        """
+        ### Yolo unit block
+        in_channel: (int)
+        
+            list of integers(out_c, kernels, strides) are input for convblock 
+        out_channel: (List[int])
+        kernels: (List[int])
+        strides: (List[int])
+        bn: (bool), layer normalization
+        max_pool: (int), 0 will disable it,
+        """
         super().__init__()
-
+        assert len(out_channels) == len(kernels) == len(strides) > 0, "Yolo block should a atleast 1 conv block config(out_c,kernel,stride)."
+        
         layers = []
         for out, kernel, stride in zip(out_channels, kernels, strides):
             layers.append(

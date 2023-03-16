@@ -71,7 +71,8 @@ class ImageDataset(Dataset):
         self.annotation_df = pd.read_json(os.path.join(data_path,"final_data.json"))
 
         self.transform = torchvision.transforms.Compose([
-            torchvision.transforms.Resize((image_size, image_size))
+            torchvision.transforms.Resize((image_size, image_size)),
+            torchvision.transforms.Normalize(0,1)
         ])
 
         self.target2indx = t2i
@@ -125,3 +126,7 @@ class ImageDataset(Dataset):
 
     def __len__(self):
         return self.image_df.shape[0]
+
+def get_data_loader():
+    ### it should return train and val set, train and val split is done randomly with evenly distributed data
+    raise NotImplementedError

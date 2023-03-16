@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .base_block import BaseYolo
+from yolo.base_block import BaseYolo
 
 class ImageClassifier(nn.Module):
     def __init__(self, input_channel, blocks, bottleneck_features, n_class) -> None:
@@ -28,6 +28,17 @@ class ImageClassifier(nn.Module):
         return self.fc(x)
 
 class Yolo(nn.Module):
+    """
+    ## yOLOv1 model 
+    https://arxiv.org/pdf/1506.02640.pdf
+
+    input_channel: (int)
+    blocks: ()
+    bottleneck_features: ()
+    s: (int), default [7], patches
+    b: (int), default [2], this is for bounding box
+    n_class: (int) default [10]
+    """
     def __init__(self, input_channel, blocks, bottleneck_features, s=7, b=2, n_class=10) -> None:
         super().__init__()
         self.s=s
@@ -49,118 +60,3 @@ class Yolo(nn.Module):
     def forward(self, x):
         x = self.base(x)
         return self.fc(x)
-
-
-def print_test(t):
-    print(f"***** TESTING BLOCK {t} ******")
-
-def test_classifier_model():
-    print_test("START")
-    blocks = [
-        {
-            'channels':[64],
-            'kernels':[7],
-            'strides':[2],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[192],
-            'kernels':[3],
-            'strides':[1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[128,256,256,512],
-            'kernels':[1,3,1,3],
-            'strides':[1,1,1,1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[256,512,256,512,256,512,256,512,512,1024],
-            'kernels':[1,3,1,3,1,3,1,3,1,3],
-            'strides':[1,1,1,1,1,1,1,1,1,1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[512,1024,512,1024,1024,1024],
-            'kernels':[1,3,1,3,3,3],
-            'strides':[1,1,1,1,1,2],
-            'bn':True,
-            'max_pool':False
-        },
-        {
-            'channels':[1024,1024],
-            'kernels':[3,3],
-            'strides':[1,1],
-            'bn':True,
-            'max_pool':False
-        }
-    ]
-
-    model = ImageClassifier(3, blocks, 4096, 1024)
-    x = torch.randn(1,3,448,448)
-    x = model(x)
-    print(x.shape)
-    print_test("END")
-
-def test_yolo_model():
-    print_test("START")
-    blocks = [
-        {
-            'channels':[64],
-            'kernels':[7],
-            'strides':[2],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[192],
-            'kernels':[3],
-            'strides':[1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[128,256,256,512],
-            'kernels':[1,3,1,3],
-            'strides':[1,1,1,1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[256,512,256,512,256,512,256,512,512,1024],
-            'kernels':[1,3,1,3,1,3,1,3,1,3],
-            'strides':[1,1,1,1,1,1,1,1,1,1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[512,1024,512,1024,1024,1024],
-            'kernels':[1,3,1,3,3,3],
-            'strides':[1,1,1,1,1,2],
-            'bn':True,
-            'max_pool':False
-        },
-        {
-            'channels':[1024,1024],
-            'kernels':[3,3],
-            'strides':[1,1],
-            'bn':True,
-            'max_pool':False
-        }
-    ]
-
-    model = Yolo(3, blocks, 4096)
-    x = torch.randn(1,3,448,448)
-    x = model(x)
-    print(x.shape)
-    print_test("END")
-
-
-if __name__ == '__main__':
-    # test_classifier_model()
-    test_yolo_model()

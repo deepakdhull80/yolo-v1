@@ -1,9 +1,14 @@
 import torch
 import torch.nn as nn
-from .blocks import YoloBlock
+from yolo.blocks import YoloBlock
 
 class BaseYolo(nn.Module):
     def __init__(self, input_c, blocks):
+        """
+        ## Yolo base block:
+        input_c: (int)
+        blocks: (List[dict]), each dict have config for a block (channels, kernels, strided, bn, max_pool)
+        """
         super().__init__()
         layers = []
         for block in blocks:
