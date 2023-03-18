@@ -17,9 +17,8 @@ model = Yolo(config.input_channel, config.blocks, config.bottle_neck_feature_siz
 
 
 # load weights
-# print(config.classifier_model_save_path.rsplit("/",1)[0])
 if not os.path.exists(config.classifier_model_save_path.rsplit("/")[0]):
-    os.makedirs(config.classifier_model_save_path.rstrip("/")[0], exist_ok=True)
+    os.makedirs(config.classifier_model_save_path.rsplit("/")[0])
 
 if os.path.exists(config.classifier_model_save_path):
     state_dict = torch.load(config.classifier_model_save_path)
@@ -75,8 +74,8 @@ for epoch in range(config.epochs):
         with torch.no_grad():
             y_h = model(images)
         
-        val_loss = loss_fn(y_h, targets)
-        _loss = val_loss.item()
+        _val_loss = loss_fn(y_h, targets)
+        _loss = _val_loss.item()
         total_val_loss+=_loss
         iter.set_description(f"loss: {_loss:.2f} total_loss: {total_val_loss/(idx+1):.2f}")
     ## model save
