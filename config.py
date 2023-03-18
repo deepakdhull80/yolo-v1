@@ -8,7 +8,7 @@ image_base_path = f"{data_base_path}/{dataset_name}"
 
 if os.path.exists(f"{data_base_path}/sampled_categories.json"):
     d = json.load(open(f"{data_base_path}/sampled_categories.json",'r'))
-    n_class = len(list(d.keys()))
+    n_classes = len(list(d.keys()))
 
 #model
 device='cuda'
