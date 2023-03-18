@@ -50,7 +50,7 @@ for epoch in range(config.epochs):
     print(f"EPOCH {epoch+1}")
     iter = tqdm(train_dl, total=len(train_dl))
     total_train_loss = 0
-    for idx, batch in enumerate(train_dl):
+    for idx, batch in enumerate(iter):
         optimizer.zero_grad()
 
         images, targets = batch[0].to(device), batch[1].to(device)
