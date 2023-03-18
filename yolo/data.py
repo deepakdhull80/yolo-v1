@@ -1,12 +1,65 @@
-import pandas as pd
-import numpy as np
-import sys
 import os
 import json
+from typing import *
 
+import pandas as pd
+import numpy as np
+from PIL import Image
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, default_collate
 import torchvision
+from torchvision.transforms import Compose, Resize, Normalize, ToTensor
+
+class ImageCrop:
+    def __init__(self, transform=None) -> None:
+        self.transform = transform
+
+    def __call__(self, image: Image, box: Union[List, np.ndarray]):
+        """
+        params:
+            image: (PIL.Image)
+            box: (Union[List, np.ndarray]), box should have shape of 4, [x,y,w,h]
+        """
+        c = [box[0], box[1], box[0]+box[2], box[1]+box[3]]
+        image = image.crop(c)
+        return self.transform(image) if self.transform is not None else image
+
+
+class ImageDataset(Dataset):
+    def __init__(self, data_path, image_path, fold="train", image_size=448):
+        super().__init__()
+        self.data_path = data_path
+        self.image_path = image_path
+        self.image_size = image_size
+        self.fold = fold
+
+        self.df = pd.read_parquet(f"{data_path}/{fold}.parquet")
+        transform = Compose([
+            Resize((image_size, image_size)),
+            ToTensor(),
+            Normalize(0.5, 0.5) #(0.1307,), (0.3081,) try this one also
+        ])
+
+        self.transform = ImageCrop(transform=transform)
+
+        self.category = json.load(open(f'{self.data_path}/sampled_categories.json','r'))
+        self.val2indx = {
+            v:i for i,v in enumerate(self.category.keys())
+        }
+
+
+    def __getitem__(self, index):
+        
+        row = self.df.loc[index]
+        image = Image.open(f"{self.image_path}/{row['file_name']}")
+        image = self.transform(image,row['bbox'])
+        if image.shape[0]!=3:
+            return None, None
+        return image, self.val2indx[str(row['category_id'])]
+        
+    def __len__(self):
+        return self.df.shape[0]
+
 
 class YoloDataset(Dataset):
     def __init__(self, data_path, image_path, fold="train", t2i=None, image_size=448, s=7, b=2, n_class=15):
@@ -59,74 +112,27 @@ class YoloDataset(Dataset):
         return self.image_df.shape[0]
 
 
-class ImageDataset(Dataset):
-    def __init__(self, data_path, image_path, t2i=None, fold="train", image_size=448, n_class=15):
-        super().__init__()
-        self.data_path = data_path
-        self.image_path = image_path
-        self.image_size = image_size
-        self.n_class = n_class
-        self.fold = fold
-        self.image_df = pd.read_json(os.path.join(data_path,f"{fold}_image_data.json"))
-        self.annotation_df = pd.read_json(os.path.join(data_path,"final_data.json"))
+def collate_fn(batch):
+    tbatch = []
+    for i in batch:
+        if i[0] != None:
+            tbatch.append(i)
+    return default_collate(tbatch)
 
-        self.transform = torchvision.transforms.Compose([
-            torchvision.transforms.Resize((image_size, image_size)),
-            torchvision.transforms.Normalize(0,1)
-        ])
-
-        self.target2indx = t2i
-        
-
-    def __getitem__(self, index):
-        data = self.image_df.iloc[index].to_dict()
-        
-        image = torchvision.io.read_image(f"{self.image_path}/{data['file_name']}")
-        
-        annotation = self.annotation_df[self.annotation_df['image_id'] == data['id']]
-        t = []
-        areas = []
-
-        # for _, row in annotation.iterrows():
-        #     bbox = row['bbox']
-        #     try:
-        #         _image = self.decode(image, bbox)
-        #     except Exception as e:
-        #         continue
-        #     area = row['area']
-        #     _class = row['supercategory']
-        #     t.append([_image, _class])
-        #     areas.append(area)
-        # if len(areas) == 0:
-        #     return None, None
-        # idx = np.argmax(areas)
-        # # idx = np.random.choice(np.arange(len(t)))
-        # image, target = t[idx]
-        # del t, area
-        try:
-            target = annotation['supercategory'].value_counts().reset_index().iloc[0]['index']
-        except Exception as e:
-            target = annotation['supercategory'].iloc[0] if annotation.shape[0]>0 else 'kitchen'
-        image = self.transform(image)
-        image = image/ 255.0
-        if image.shape[0] != 3:
-            return None, None
-        target = self.target2indx[target]
-        return image, target
-
-    def decode(self, image, bbox):
-        _, h, w = image.shape
-        assert h!=0, "Height should be greater than zero"
-        assert w!=0, "Width should be greater than zero"
-        # print(int(bbox[0]),int(bbox[0]+bbox[2]), int(bbox[1]), int(bbox[1]+bbox[3]))
-        image = image[:, int(bbox[0]):int(bbox[0]+bbox[2]), int(bbox[1]):int(bbox[1]+bbox[3])]
-        image = self.transform(image)
-        image = image/ 255.0
-        return image
-
-    def __len__(self):
-        return self.image_df.shape[0]
-
-def get_data_loader():
+def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, batch_size=8, n_worker=1):
     ### it should return train and val set, train and val split is done randomly with evenly distributed data
-    raise NotImplementedError
+    if yolo_train:
+        raise NotImplementedError()
+    
+    train_ds, val_ds = ImageDataset(
+        data_path=data_path,
+        image_path=image_path,
+        fold='train',image_size=image_size
+    ), ImageDataset(
+        data_path=data_path,
+        image_path=image_path,
+        fold='val',image_size=image_size
+    )
+
+    return DataLoader(train_ds, batch_size=batch_size, shuffle=True, collate_fn=lambda x:collate_fn(x), pin_memory=False), \
+        DataLoader(val_ds, batch_size=batch_size, shuffle=True, collate_fn=lambda x:collate_fn(x), pin_memory=False)

@@ -1,88 +1,47 @@
-import pandas as pd
-from tqdm import tqdm
-import json
+import os
 
+from tqdm import tqdm
 import torch
-import torchvision
 
 from yolo.model import ImageClassifier, Yolo
-from yolo.data import ImageDataset, YoloDataset
-import config
+from yolo.data import get_data_loader
 from yolo.loss import YoloLoss
+import config
 
 # model
+
+device = torch.device(config.device)
+
 model = Yolo(config.input_channel, config.blocks, config.bottle_neck_feature_size, n_class=config.n_classes) if config.yolo_training_enable else \
     ImageClassifier(config.input_channel, config.blocks, config.bottle_neck_feature_size, n_class=config.n_classes)
 print(model)
 
+# load weights
+# print(config.classifier_model_save_path.rsplit("/",1)[0])
+if not os.path.exists(config.classifier_model_save_path.rsplit("/")[0]):
+    os.makedirs(config.classifier_model_save_path.rstrip("/")[0], exist_ok=True)
+
+if os.path.exists(config.classifier_model_save_path):
+    state_dict = torch.load(config.classifier_model_save_path)
+    model = model.load_state_dict(state_dict)
+    print(f"model weights loaded: {config.classifier_model_save_path}")
+
+model = model.to(device)
+
 # Data
-
-anno_df = pd.read_json(f"{config.data_base_path}/final_data.json")
-t2i = {
-    name:idx for idx, name in enumerate(anno_df['supercategory'].unique())
-}
-i2t = {
-    idx:name for idx, name in enumerate(anno_df['supercategory'].unique())
-}
-with open("data/i2t.json", "w") as f:
-    json.dump(i2t, f)
-
-print(t2i)
-train_ds = YoloDataset(
-    data_path = config.data_base_path,
-    image_path = config.image_base_path,
-    t2i = t2i,
-    fold = "train",
-    image_size = config.image_size,
-    n_class = config.n_classes
-
-) if config.yolo_training_enable else \
-    ImageDataset(
-        data_path = config.data_base_path,
-        image_path = config.image_base_path,
-        t2i = t2i,
-        fold = "train",
-        image_size = config.image_size,
-        n_class = config.n_classes
-    )
-
-val_ds = YoloDataset(
-    data_path = config.data_base_path,
-    image_path = config.image_base_path,
-    t2i = t2i,
-    fold = "val",
-    image_size = config.image_size,
-    n_class = config.n_classes
-
-) if config.yolo_training_enable else \
-    ImageDataset(
-        data_path = config.data_base_path,
-        image_path = config.image_base_path,
-        t2i = t2i,
-        fold = "val",
-        image_size = config.image_size,
-        n_class = config.n_classes
-    )
-
-def collate_fn(data):
-    update_data = [(image, label) for image,label in data if image is not None]
-    return torch.utils.data.dataloader.default_collate(update_data)
-
-train_dl = torch.utils.data.DataLoader(
-    train_ds, batch_size = config.batch_size,
-    shuffle=True,
-    collate_fn=collate_fn
-)
-
-val_dl = torch.utils.data.DataLoader(
-    val_ds, batch_size = config.batch_size,
-    collate_fn=collate_fn
+train_dl, val_dl = get_data_loader(
+    data_path=config.data_base_path,
+    image_path=config.image_base_path,
+    yolo_train=config.yolo_training_enable,
+    image_size=config.image_size,
+    batch_size=config.batch_size,
+    n_worker=config.n_worker
 )
 
 loss_fn = YoloLoss(config.s,config.b,config.n_class,config.lambda_coord, config.noobj) if config.yolo_training_enable else \
     torch.nn.CrossEntropyLoss()
 
-optimizer = torch.optim.Adam(model.parameters(), lr = 1e-3)
+optimizer = torch.optim.Adam(model.parameters(), lr = config.lr)
 val_loss = 1e5
 
 for epoch in range(config.epochs):
@@ -91,10 +50,10 @@ for epoch in range(config.epochs):
     print(f"EPOCH {epoch+1}")
     iter = tqdm(train_dl, total=len(train_dl))
     total_train_loss = 0
-    for idx, batch in enumerate(iter):
+    for idx, batch in enumerate(train_dl):
         optimizer.zero_grad()
 
-        images, targets = batch[0], batch[1]
+        images, targets = batch[0].to(device), batch[1].to(device)
         y_h = model(images)
         train_loss = loss_fn(y_h, targets)
 
@@ -102,6 +61,7 @@ for epoch in range(config.epochs):
         optimizer.step()
         _loss = train_loss.detach().item()
         total_train_loss+=_loss
+        # print(total_train_loss/(idx+1))
         iter.set_description(f"loss: {_loss:.2f} total_loss: {total_train_loss/(idx+1):.2f}")
 
     ## val part
@@ -122,5 +82,5 @@ for epoch in range(config.epochs):
     ## model save
     if val_loss > total_val_loss:
         val_loss = total_val_loss
-        torch.save(config.classifier_model_save_path)
+        torch.save(model.state_dict(),config.classifier_model_save_path)
         print(f"Model saved, {config.classifier_model_save_path}")

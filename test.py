@@ -1,6 +1,12 @@
+import random
 import torch
+from yolo.data import ImageDataset
 from yolo.model import ImageClassifier, Yolo
 import config
+from tqdm import tqdm
+
+from torch.utils.data import DataLoader, default_collate
+
 
 def print_test(t):
     print(f"***** TESTING BLOCK {t} ******")
@@ -119,7 +125,30 @@ def test_yolo_model():
     print(x.shape)
     print_test("END")
 
+def test_image_dataset():
+    print_test("Start")
+    val = ImageDataset(
+        data_path="data",
+        image_path="data/val2017",
+        fold='train'
+    )
+
+    def collate_fn(batch):
+        tbatch = []
+        for i in batch:
+            if i[0] != None:
+                tbatch.append(i)
+        
+        return default_collate(tbatch)
+
+    dl = DataLoader(val, batch_size=10, collate_fn=lambda x: collate_fn(x), shuffle=True)
+    
+    for row in dl:
+        i = row
+        print(i[0].shape, i[1])
+    print_test("end")
 
 if __name__ == '__main__':
     # test_classifier_model()
-    test_yolo_model()
+    # test_yolo_model()
+    test_image_dataset()
