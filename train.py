@@ -14,7 +14,7 @@ device = torch.device(config.device)
 
 model = Yolo(config.input_channel, config.blocks, config.bottle_neck_feature_size, n_class=config.n_classes) if config.yolo_training_enable else \
     ImageClassifier(config.input_channel, config.blocks, config.bottle_neck_feature_size, n_class=config.n_classes)
-print(model)
+
 
 # load weights
 # print(config.classifier_model_save_path.rsplit("/",1)[0])

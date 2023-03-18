@@ -134,5 +134,5 @@ def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, bat
         fold='val',image_size=image_size
     )
 
-    return DataLoader(train_ds, batch_size=batch_size, shuffle=True, collate_fn=lambda x:collate_fn(x), pin_memory=False), \
-        DataLoader(val_ds, batch_size=batch_size, shuffle=True, collate_fn=lambda x:collate_fn(x), pin_memory=False)
+    return DataLoader(train_ds, batch_size=batch_size, shuffle=True,num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=False), \
+        DataLoader(val_ds, batch_size=batch_size, shuffle=True,num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=False)
