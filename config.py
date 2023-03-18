@@ -1,22 +1,18 @@
-import json
 import os
-
+import json
 # data
 image_size = 448
 data_base_path = "./data"
 dataset_name = "val2017"
 image_base_path = f"{data_base_path}/{dataset_name}"
 
+if os.path.exists(f"{data_base_path}/sampled_categories.json"):
+    d = json.load(open(f"{data_base_path}/sampled_categories.json",'r'))
+    n_class = len(list(d.keys()))
 
 #model
 device='cuda'
 yolo_training_enable = False
-
-assert os.path.exists(image_base_path), "data not found, run prepare_data.py first."
-assert os.path.exists(f'{data_base_path}/sampled_categories.json'), "prepare_data.py not run properly, make sure it run without any error or warning."
-
-category_id = json.load(open(f'{data_base_path}/sampled_categories.json'))
-n_classes = len(category_id)
 
 input_channel = 3
 bottle_neck_feature_size = 4096

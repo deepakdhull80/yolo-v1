@@ -15,6 +15,9 @@ DATA_DIR = config.data_base_path
 # download coco dataset
 def downlaod_dataset():
     print("downloading dataset")
+    print("downloading dataset")
+    if not os.path.exists(DATA_DIR):
+        os.mkdir(DATA_DIR)
     wget.download(f"http://images.cocodataset.org/zips/{DATA_FILE}",f"{DATA_DIR}/")
     wget.download(f"http://images.cocodataset.org/annotations/{ANNOTATION_FILE}",f"{DATA_DIR}/")
 
@@ -74,5 +77,5 @@ def prepare_dataset():
     print("*** Completed ***")
 
 if __name__ == '__main__':
-    # downlaod_dataset()
+    downlaod_dataset()
     prepare_dataset()
