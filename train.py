@@ -71,7 +71,7 @@ for epoch in range(config.epochs):
     print(f"EPOCH {epoch+1} -validation step")
     for idx, batch in enumerate(iter):
         
-        images, targets = batch[0], batch[1]
+        images, targets = batch[0].to(device), batch[1].to(device)
         with torch.no_grad():
             y_h = model(images)
         
