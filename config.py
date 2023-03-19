@@ -17,9 +17,10 @@ yolo_training_enable = False
 input_channel = 3
 bottle_neck_feature_size = 4096
 epochs = 30
-classifier_model_save_path = "./checkpoints/yolo.pt" \
+chkpt_dir = "/content/drive/MyDrive/models/yolov1"
+classifier_model_save_path = f"{chkpt_dir}/yolo.pt" \
                             if yolo_training_enable \
-                                else "./checkpoints/classifier.pt"
+                                else f"{chkpt_dir}/classifier.pt"
 
 yolo_bounding_box = 2
 yolo_patches = 7

@@ -17,18 +17,18 @@ model = Yolo(config.input_channel, config.blocks, config.bottle_neck_feature_siz
 
 
 # load weights
-if not os.path.exists(config.classifier_model_save_path.rsplit("/")[0]):
-    os.makedirs(config.classifier_model_save_path.rsplit("/")[0])
+if not os.path.exists(config.chkpt_dir):
+    os.makedirs(config.chkpt_dir)
 
 if os.path.exists(config.classifier_model_save_path):
     state_dict = torch.load(config.classifier_model_save_path)
-    model = model.load_state_dict(state_dict)
-    print(f"model weights loaded: {config.classifier_model_save_path}")
+    r = model.load_state_dict(state_dict)
+    print(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
 
 model = model.to(device)
 
 # Data
-train_dl, val_dl = get_data_loader(
+train_dl, val_dl, c_weigh = get_data_loader(
     data_path=config.data_base_path,
     image_path=config.image_base_path,
     yolo_train=config.yolo_training_enable,
@@ -38,7 +38,7 @@ train_dl, val_dl = get_data_loader(
 )
 
 loss_fn = YoloLoss(config.s,config.b,config.n_class,config.lambda_coord, config.noobj) if config.yolo_training_enable else \
-    torch.nn.CrossEntropyLoss()
+    torch.nn.CrossEntropyLoss(weight=c_weigh,reduction='mean')
 
 optimizer = torch.optim.Adam(model.parameters(), lr = config.lr)
 val_loss = 1e5

@@ -9,6 +9,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset, default_collate
 import torchvision
 from torchvision.transforms import Compose, Resize, Normalize, ToTensor
+from sklearn.utils.class_weight import compute_class_weight
 
 class ImageCrop:
     def __init__(self, transform=None) -> None:
@@ -46,6 +47,18 @@ class ImageDataset(Dataset):
         self.val2indx = {
             v:i for i,v in enumerate(self.category.keys())
         }
+
+        self.class_weights = self.get_class_weights()
+    
+    def get_class_weights(self):
+        y = self.df['category_id'].map(lambda x: self.val2indx[str(x)])
+        class_weights = compute_class_weight(
+                        class_weight='balanced',
+                        classes=np.unique(y.to_numpy()), 
+                        y = y.to_numpy()
+                    )
+        return torch.tensor(class_weights, dtype=torch.float)
+
 
 
     def __getitem__(self, index):
@@ -121,6 +134,10 @@ def collate_fn(batch):
 
 def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, batch_size=8, n_worker=1):
     ### it should return train and val set, train and val split is done randomly with evenly distributed data
+    """
+    
+    return TrainDataLoader, ValDataLoader, class_weights #ImageClassification task.
+    """
     if yolo_train:
         raise NotImplementedError()
     
@@ -135,4 +152,4 @@ def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, bat
     )
 
     return DataLoader(train_ds, batch_size=batch_size, shuffle=True,num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=False), \
-        DataLoader(val_ds, batch_size=batch_size, shuffle=True,num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=False)
+        DataLoader(val_ds, batch_size=batch_size, shuffle=True,num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=False), train_ds.class_weights
