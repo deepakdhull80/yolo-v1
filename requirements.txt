@@ -5,3 +5,4 @@ pandas==1.5.3
 numpy
 pyarrow
 fastparquet
+torchmetrics

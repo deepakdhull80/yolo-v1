@@ -10,7 +10,8 @@ paper https://arxiv.org/pdf/1506.02640.pdf
   coco dataset : https://cocodataset.org/
 
 ## Todo
-- [ ] complete dataloader.
+- [x] complete dataloader.
+- [ ] add LR schedular.
 - [ ] train classifier
 - [ ] train yolov1
 - [ ] Add metrics (mAP, mAR).

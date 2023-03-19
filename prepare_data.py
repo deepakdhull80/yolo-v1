@@ -43,18 +43,26 @@ def prepare_dataset():
     image_df = pd.DataFrame(js['images'])
     anno_df = pd.DataFrame(js['annotations'])
 
-    image_cols = ['file_name', 'id']
-    anno_cols = ['image_id', 'bbox', 'category_id', 'id']
+    image_cols = ['file_name', 'id','height', 'width']
+    anno_cols = ['image_id', 'bbox', 'category_id', 'id', 'area']
     image_df = image_df[image_cols]
     anno_df = anno_df[anno_cols]
 
+    image_df['total_area'] = image_df['height']* image_df['width']
+    del image_df['height'], image_df['width']
+
     # join between to df
     data_df = pd.merge(anno_df, image_df.rename(columns={'id':'image_id'}), how='inner', on='image_id')
+    
     print(f'[=INFO] dataframe size: {data_df.shape}')
     print(f"[=INFO] columns are: {data_df.columns}")
-
+    data_df['object_percentage'] = data_df['area']/data_df['total_area']
+    data_df = data_df[data_df['object_percentage'] > 0.15].reset_index(drop=True)
+    
     # top 10 items we pick
-    cat_li = list(data_df['category_id'].value_counts().iloc[:10].keys())
+    k_items = 5
+    strt_with = 1
+    cat_li = list(data_df['category_id'].value_counts().iloc[strt_with:strt_with+k_items].keys())
     tmp = cat_df[cat_df['id'].isin(cat_li)]
     ids = tmp['id']
     names = tmp['name']

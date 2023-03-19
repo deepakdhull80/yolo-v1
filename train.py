@@ -2,6 +2,7 @@ import os
 
 from tqdm import tqdm
 import torch
+import torchmetrics
 
 from yolo.model import ImageClassifier, Yolo
 from yolo.data import get_data_loader
@@ -38,10 +39,12 @@ train_dl, val_dl, c_weigh = get_data_loader(
 )
 
 loss_fn = YoloLoss(config.s,config.b,config.n_class,config.lambda_coord, config.noobj) if config.yolo_training_enable else \
-    torch.nn.CrossEntropyLoss(weight=c_weigh,reduction='mean')
+    torch.nn.CrossEntropyLoss(weight=c_weigh.to(device),reduction='mean')
 
 optimizer = torch.optim.Adam(model.parameters(), lr = config.lr)
 val_loss = 1e5
+train_metric = torchmetrics.Accuracy(task="multiclass", num_classes=c_weigh.shape[0]).to(device)
+val_metric = torchmetrics.Accuracy(task="multiclass", num_classes=c_weigh.shape[0]).to(device)
 
 for epoch in range(config.epochs):
     ## train part
@@ -60,9 +63,12 @@ for epoch in range(config.epochs):
         optimizer.step()
         _loss = train_loss.detach().item()
         total_train_loss+=_loss
-        # print(total_train_loss/(idx+1))
-        iter.set_description(f"loss: {_loss:.2f} total_loss: {total_train_loss/(idx+1):.2f}")
+        with torch.no_grad():
+            auc = train_metric(y_h.softmax(dim=-1), targets)
+            total_auc = train_metric.compute()
 
+        iter.set_description(f"loss: {_loss:.2f} total_loss: {total_train_loss/(idx+1):.2f}, auc:{auc:.2f} ,total_auc:{total_auc:.2f}")
+    
     ## val part
     model = model.eval()
     iter = tqdm(val_dl, total=len(val_dl))
@@ -77,9 +83,16 @@ for epoch in range(config.epochs):
         _val_loss = loss_fn(y_h, targets)
         _loss = _val_loss.item()
         total_val_loss+=_loss
-        iter.set_description(f"loss: {_loss:.2f} total_loss: {total_val_loss/(idx+1):.2f}")
+        with torch.no_grad():
+            auc = val_metric(y_h.softmax(dim=-1), targets)
+            total_auc = val_metric.compute()
+
+        iter.set_description(f"loss: {_loss:.2f} total_loss: {total_val_loss/(idx+1):.2f}, auc:{auc:.2f} ,total_auc:{total_auc:.2f}")
     ## model save
     if val_loss > total_val_loss:
         val_loss = total_val_loss
         torch.save(model.state_dict(),config.classifier_model_save_path)
         print(f"Model saved, {config.classifier_model_save_path}")
+    
+    train_metric.reset()
+    val_metric.reset()
