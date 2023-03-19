@@ -45,11 +45,12 @@ class Yolo(nn.Module):
         self.b=b
         self.n_class=n_class
         self.base = BaseYolo(input_channel, blocks)
-        self.base_output_size = blocks[-1]['channels'][-1] * 12 * 12
+        self.base_output_size = blocks[-1]['channels'][-1] * 14 * 14
 
         self.fc = nn.Sequential(
             nn.Flatten(),
             nn.Linear(self.base_output_size, bottleneck_features),
+            # nn.Tanh(),
             nn.Dropout(),
             nn.Linear(bottleneck_features, self.s*self.s*(self.b * 5 + self.n_class)),
             nn.Sigmoid()
@@ -58,5 +59,7 @@ class Yolo(nn.Module):
 
 
     def forward(self, x):
+        b = x.shape[0]
         x = self.base(x)
-        return self.fc(x)
+        x = self.fc(x)
+        return x.view(b, self.s, self.s, self.b * 5 + self.n_class) # [16, 7, 7, 20]

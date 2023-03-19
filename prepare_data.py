@@ -15,7 +15,6 @@ DATA_DIR = config.data_base_path
 # download coco dataset
 def downlaod_dataset():
     print("downloading dataset")
-    print("downloading dataset")
     if not os.path.exists(DATA_DIR):
         os.mkdir(DATA_DIR)
     wget.download(f"http://images.cocodataset.org/zips/{DATA_FILE}",f"{DATA_DIR}/")
@@ -57,7 +56,7 @@ def prepare_dataset():
     print(f'[=INFO] dataframe size: {data_df.shape}')
     print(f"[=INFO] columns are: {data_df.columns}")
     data_df['object_percentage'] = data_df['area']/data_df['total_area']
-    data_df = data_df[data_df['object_percentage'] > 0.15].reset_index(drop=True)
+    data_df = data_df[data_df['object_percentage'] > 0.05].reset_index(drop=True)
     
     # top 10 items we pick
     k_items = 5
@@ -75,9 +74,9 @@ def prepare_dataset():
 
     ### balance category-1
     #TODO: remove less threshold area object first
-    n_c1 = sdata_df[(sdata_df['category_id'] == 1)].shape[0]
-    c1_index = sdata_df[sdata_df['category_id'] == 1].sample(int(n_c1*0.8)).index
-    sdata_df.drop(index=c1_index, inplace=True)
+    # n_c1 = sdata_df[(sdata_df['category_id'] == 1)].shape[0]
+    # c1_index = sdata_df[sdata_df['category_id'] == 1].sample(int(n_c1*0.8)).index
+    # sdata_df.drop(index=c1_index, inplace=True)
 
     train, val = train_test_split(sdata_df, train_size=0.8, shuffle=True, random_state=1, stratify=sdata_df['category_id'])
     train.to_parquet(f"{DATA_DIR}/train.parquet",index=False)

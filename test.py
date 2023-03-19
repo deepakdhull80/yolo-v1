@@ -13,103 +13,16 @@ def print_test(t):
 
 def test_classifier_model():
     print_test("START")
-    blocks = [
-        {
-            'channels':[64],
-            'kernels':[7],
-            'strides':[2],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[192],
-            'kernels':[3],
-            'strides':[1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[128,256,256,512],
-            'kernels':[1,3,1,3],
-            'strides':[1,1,1,1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[256,512,256,512,256,512,256,512,512,1024],
-            'kernels':[1,3,1,3,1,3,1,3,1,3],
-            'strides':[1,1,1,1,1,1,1,1,1,1],
-            'bn':True,
-            'max_pool':2
-        },
-        {
-            'channels':[512,1024,512,1024,1024,1024],
-            'kernels':[1,3,1,3,3,3],
-            'strides':[1,1,1,1,1,2],
-            'bn':True,
-            'max_pool':False
-        },
-        {
-            'channels':[1024,1024],
-            'kernels':[3,3],
-            'strides':[1,1],
-            'bn':True,
-            'max_pool':False
-        }
-    ]
-
-    model = ImageClassifier(3, config.blocks, 4096, 1024)
+    
+    model = ImageClassifier(3, config.blocks, 4096, 5)
     x = torch.randn(1,3,448,448)
+    print(model)
     x = model(x)
     print(x.shape)
     print_test("END")
 
 def test_yolo_model():
     print_test("START")
-    blocks = [
-        {
-            'channels':[64],
-            'kernels':[7],
-            'strides':[2],
-            'bn':False,
-            'max_pool':2
-        },
-        {
-            'channels':[192],
-            'kernels':[3],
-            'strides':[1],
-            'bn':False,
-            'max_pool':2
-        },
-        {
-            'channels':[128,256,256,512],
-            'kernels':[1,3,1,3],
-            'strides':[1,1,1,1],
-            'bn':False,
-            'max_pool':2
-        },
-        {
-            'channels':[256,512,256,512,256,512,256,512,512,1024],
-            'kernels':[1,3,1,3,1,3,1,3,1,3],
-            'strides':[1,1,1,1,1,1,1,1,1,1],
-            'bn':False,
-            'max_pool':2
-        },
-        {
-            'channels':[512,1024,512,1024,1024,1024],
-            'kernels':[1,3,1,3,3,3],
-            'strides':[1,1,1,1,1,2],
-            'bn':False,
-            'max_pool':False
-        },
-        {
-            'channels':[1024,1024],
-            'kernels':[3,3],
-            'strides':[1,1],
-            'bn':False,
-            'max_pool':False
-        }
-    ]
 
     blocks = config.blocks
     model = Yolo(
@@ -150,5 +63,5 @@ def test_image_dataset():
 
 if __name__ == '__main__':
     # test_classifier_model()
-    # test_yolo_model()
-    test_image_dataset()
+    test_yolo_model()
+    # test_image_dataset()
