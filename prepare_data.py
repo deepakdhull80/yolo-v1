@@ -55,8 +55,8 @@ def prepare_dataset():
     
     print(f'[=INFO] dataframe size: {data_df.shape}')
     print(f"[=INFO] columns are: {data_df.columns}")
-    data_df['object_percentage'] = data_df['area']/data_df['total_area']
-    data_df = data_df[data_df['object_percentage'] > 0.05].reset_index(drop=True)
+    # data_df['object_percentage'] = data_df['area']/data_df['total_area']
+    # data_df = data_df[data_df['object_percentage'] > 0.05].reset_index(drop=True)
     
     # top 10 items we pick
     k_items = 5

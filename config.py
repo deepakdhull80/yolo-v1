@@ -15,7 +15,7 @@ device='cuda'
 yolo_training_enable = False
 
 input_channel = 3
-bottle_neck_feature_size = 4096
+bottle_neck_feature_size = 1024
 epochs = 30
 chkpt_dir = "/content/drive/MyDrive/models/yolov1"
 classifier_model_save_path = f"{chkpt_dir}/yolo.pt" \
@@ -24,9 +24,9 @@ classifier_model_save_path = f"{chkpt_dir}/yolo.pt" \
 
 yolo_bounding_box = 2
 yolo_patches = 7
-n_worker = 1
-lr=1e-3
-batch_size = 16
+n_worker = 2
+lr=0.003
+batch_size = 16*3
 
 ### yolo model architecture
 bn_enable = False

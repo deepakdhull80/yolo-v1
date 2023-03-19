@@ -70,9 +70,9 @@ class ImageDataset(Dataset):
         
         row = self.df.loc[index]
         image = Image.open(f"{self.image_path}/{row['file_name']}")
-        image = self.transform(image,row['bbox'])
-        if image.shape[0]!=3:
+        if len(image.getbands())!=3:
             return None, None
+        image = self.transform(image,row['bbox'])
         if hasattr(self, "augment"):
             image = self.augment(image)
         return image, self.val2indx[str(row['category_id'])]

@@ -12,6 +12,11 @@ paper https://arxiv.org/pdf/1506.02640.pdf
 ## Todo
 - [x] complete dataloader.
 - [ ] add LR schedular.
-- [ ] train classifier
+- [x] train classifier
 - [ ] train yolov1
 - [ ] Add metrics (mAP, mAR).
+
+
+#### Learning
+- With crossentropyloss, never use softmax on logits, nllloss(neg log likelihood loss) need log_softmax on logits.
+- For image normalization, always use standard mean and std RGB values mean = (0.485, 0.456, 0.406), std = (0.229, 0.224, 0.225).

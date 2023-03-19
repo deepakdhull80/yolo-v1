@@ -13,11 +13,8 @@ class ImageClassifier(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(self.base_output_size, bottleneck_features),
             nn.Dropout(),
-            nn.Linear(bottleneck_features, n_class),
-            nn.Softmax(dim=1)
+            nn.Linear(bottleneck_features, n_class)
         )
-
-
 
     def forward(self, x):
         b = x.shape[0]
