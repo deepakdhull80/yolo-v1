@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 import torch
 from torch.utils.data import DataLoader, Dataset, default_collate
-from torchvision.transforms import Compose, Resize, Normalize, ToTensor, RandomVerticalFlip, RandomHorizontalFlip, RandomSolarize
+from torchvision.transforms import Compose, Resize, Normalize, ToTensor, RandomVerticalFlip, RandomHorizontalFlip
 from sklearn.utils.class_weight import compute_class_weight
 
 class ImageCrop:
@@ -36,14 +36,12 @@ class ImageDataset(Dataset):
         self.df = pd.read_parquet(f"{data_path}/{fold}.parquet")
         transform = Compose([
             Resize((image_size, image_size)),
-            ToTensor(),
-            Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # standard rgb normalize value
+            ToTensor()
         ])
         if augment:
             self.augment = Compose(
                 [
                 RandomHorizontalFlip(0.3),
-                RandomSolarize(0.1),
                 RandomVerticalFlip(0.2)
                 ]
             )
