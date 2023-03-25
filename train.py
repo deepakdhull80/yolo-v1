@@ -1,4 +1,5 @@
 import os
+import logging
 
 from tqdm import tqdm
 import torch
@@ -9,8 +10,27 @@ from yolo.data import get_data_loader
 from yolo.loss import YoloLoss
 import config
 
-# model
+### LOGGER
+# Create a custom logger
+logger = logging.getLogger(__name__)
+# Create handlers
+f_handler = logging.FileHandler(f"{config.chkpt_dir}/train.logs", mode='w')
+c_handler = logging.StreamHandler()
 
+f_handler.setLevel(logging.INFO)
+c_handler.setLevel(logging.INFO)
+# Create formatters and add it to handlers
+f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+f_handler.setFormatter(f_format)
+
+c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+c_handler.setFormatter(c_format)
+
+# Add handlers to the logger
+logger.addHandler(f_handler)
+logger.addHandler(c_handler)
+
+# model
 device = torch.device(config.device)
 
 model = Yolo(config.input_channel, config.blocks, config.bottle_neck_feature_size, n_class=config.n_classes) if config.yolo_training_enable else \
@@ -24,7 +44,8 @@ if not os.path.exists(config.chkpt_dir):
 if os.path.exists(config.classifier_model_save_path):
     state_dict = torch.load(config.classifier_model_save_path)
     r = model.load_state_dict(state_dict)
-    print(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
+    # print(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
+    logger.info(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
 
 model = model.to(device)
 
@@ -49,7 +70,8 @@ val_metric = torchmetrics.Accuracy(task="multiclass", num_classes=c_weigh.shape[
 for epoch in range(config.epochs):
     ## train part
     model = model.train()
-    print(f"EPOCH {epoch+1}")
+    # print(f"EPOCH {epoch+1}")
+    logging.info(f"EPOCH {epoch+1}")
     iter = tqdm(train_dl, total=len(train_dl))
     total_train_loss = 0
     for idx, batch in enumerate(iter):
@@ -73,7 +95,8 @@ for epoch in range(config.epochs):
     model = model.eval()
     iter = tqdm(val_dl, total=len(val_dl))
     total_val_loss = 0
-    print(f"EPOCH {epoch+1} -validation step")
+    # print(f"EPOCH {epoch+1} -validation step")
+    logging.info(f"EPOCH {epoch+1} -validation step")
     for idx, batch in enumerate(iter):
         
         images, targets = batch[0].to(device), batch[1].to(device)
@@ -92,7 +115,8 @@ for epoch in range(config.epochs):
     if val_loss > total_val_loss:
         val_loss = total_val_loss
         torch.save(model.state_dict(),config.classifier_model_save_path)
-        print(f"Model saved, {config.classifier_model_save_path}")
+        # print(f"Model saved, {config.classifier_model_save_path}")
+        logging.info(f"Model saved, {config.classifier_model_save_path}")
     
     train_metric.reset()
     val_metric.reset()
