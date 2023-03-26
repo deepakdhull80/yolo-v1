@@ -188,7 +188,7 @@ def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, bat
         train_ds, val_ds = YoloDataset(
             data_path="data",
             image_path="data/val2017",
-            fold='val',
+            fold='train',
             image_size=image_size,
             s=kwargs.get("yolo_patches",7),
             b=kwargs.get("yolo_bounding_box",1)
@@ -213,4 +213,4 @@ def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, bat
     assert train_ds != None or val_ds != None, "dataloader strategy failed for yolo_train={yolo_train}"
     return DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=pin_memory), \
             DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=pin_memory), \
-            train_ds.class_weights
+            train_ds.class_weights if not yolo_train else None

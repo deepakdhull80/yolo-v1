@@ -102,7 +102,7 @@ def test_yolo_loss():
     val = YoloDataset(
         data_path="data",
         image_path="data/val2017",
-        fold='val',
+        fold='train',
         image_size=config.image_size,
         s=config.yolo_patches,
         b=config.yolo_bounding_box

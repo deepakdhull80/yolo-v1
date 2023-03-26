@@ -26,15 +26,8 @@ class YoloLoss(torch.nn.Module):
             y (torch.tensor): shape->(batch,patch,patch,5*b+n_class)
             y_h (torch.tensor): shape->(batch,patch,patch,5*b+n_class)
         """
-        
-        ### no object loss
-        no_obj_mask = y[:,:,:,0] == 0
-        loss_noobj = self.lambda_noobj * torch.sum(torch.pow(y[no_obj_mask] - y_h[no_obj_mask], 2))
-
-        ### object found loss
-        mask = ~no_obj_mask
-        loss_obj = torch.sum(torch.pow(y[mask] - y_h[mask], 2))
         loss_obj, loss_noobj, loss_coord, loss_prob = 0, 0, 0, 0
+        print(y.shape, y_h.shape)
         for i in range(self.s):
             for j in range(self.s):
                 for k in range(self.b):
@@ -50,7 +43,6 @@ class YoloLoss(torch.nn.Module):
                         (s_y[:,i,j,k*5+3].pow(0.5) - s_y_h[:,i,j,k*5+3].pow(0.5)).pow(2) +
                         (s_y[:,i,j,k*5+4].pow(0.5) - s_y_h[:,i,j,k*5+4].pow(0.5)).pow(2)
                     )
-
                     loss_prob += (s_y[:,i,j,k*5+5:] - s_y_h[:,i,j,k*5+5:].softmax(dim=0)).pow(2).sum()
 
         loss = loss_obj \

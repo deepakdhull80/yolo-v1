@@ -33,7 +33,12 @@ logger.addHandler(c_handler)
 # model
 device = torch.device(config.device)
 
-model = Yolo(config.input_channel, config.blocks, config.bottle_neck_feature_size, n_class=config.n_classes) if config.yolo_training_enable else \
+model = Yolo(config.input_channel, 
+            config.blocks, 
+            config.bottle_neck_feature_size, 
+            s=config.yolo_patches,
+            b=config.yolo_bounding_box,
+            n_class=config.n_classes) if config.yolo_training_enable else \
     ImageClassifier(config.input_channel, config.blocks, config.bottle_neck_feature_size, n_class=config.n_classes)
 
 
@@ -44,7 +49,7 @@ if not os.path.exists(config.chkpt_dir):
 if os.path.exists(config.classifier_model_save_path):
     state_dict = torch.load(config.classifier_model_save_path)
     r = model.load_state_dict(state_dict)
-    # print(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
+    print(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
     logger.info(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
 
 if config.yolo_training_enable and os.path.exists(f"{config.chkpt_dir}/classifier.pt"):
@@ -71,18 +76,19 @@ train_dl, val_dl, c_weigh = get_data_loader(
     b=config.yolo_bounding_box
 )
 
-loss_fn = YoloLoss(config.s, config.b, config.n_class, config.lambda_coord, config.noobj) if config.yolo_training_enable else \
+loss_fn = YoloLoss(config.yolo_patches, config.yolo_bounding_box, config.n_classes, config.lambda_coord, config.lambda_noobj) if config.yolo_training_enable else \
     torch.nn.CrossEntropyLoss(weight=c_weigh.to(device),reduction='mean')
 
 optimizer = torch.optim.Adam(model.parameters(), lr = config.lr)
 val_loss = 1e5
-train_metric = torchmetrics.Accuracy(task="multiclass", num_classes=c_weigh.shape[0]).to(device)
-val_metric = torchmetrics.Accuracy(task="multiclass", num_classes=c_weigh.shape[0]).to(device)
+if not config.yolo_training_enable:
+    train_metric = torchmetrics.Accuracy(task="multiclass", num_classes=c_weigh.shape[0]).to(device)
+    val_metric = torchmetrics.Accuracy(task="multiclass", num_classes=c_weigh.shape[0]).to(device)
 
 for epoch in range(config.epochs):
     ## train part
     model = model.train()
-    # print(f"EPOCH {epoch+1}")
+    print(f"EPOCH {epoch+1}")
     logging.info(f"EPOCH {epoch+1}")
     iter = tqdm(train_dl, total=len(train_dl))
     total_train_loss = 0
@@ -97,17 +103,19 @@ for epoch in range(config.epochs):
         optimizer.step()
         _loss = train_loss.detach().item()
         total_train_loss+=_loss
-        with torch.no_grad():
-            auc = train_metric(y_h.softmax(dim=-1), targets)
-            total_auc = train_metric.compute()
+        if not config.yolo_training_enable:
+            with torch.no_grad():
+                auc = train_metric(y_h.softmax(dim=-1), targets)
+                total_auc = train_metric.compute()
 
-        iter.set_description(f"loss: {_loss:.2f} total_loss: {total_train_loss/(idx+1):.2f}, auc:{auc:.2f} ,total_auc:{total_auc:.2f}")
-    
+            iter.set_description(f"loss: {_loss:.2f} total_loss: {total_train_loss/(idx+1):.2f}, auc:{auc:.2f} ,total_auc:{total_auc:.2f}")
+        else:
+            iter.set_description(f"loss: {_loss:.2f} total_loss: {total_train_loss/(idx+1):.2f}")
     ## val part
     model = model.eval()
     iter = tqdm(val_dl, total=len(val_dl))
     total_val_loss = 0
-    # print(f"EPOCH {epoch+1} -validation step")
+    print(f"EPOCH {epoch+1} -validation step")
     logging.info(f"EPOCH {epoch+1} -validation step")
     for idx, batch in enumerate(iter):
         
@@ -118,17 +126,20 @@ for epoch in range(config.epochs):
         _val_loss = loss_fn(y_h, targets)
         _loss = _val_loss.item()
         total_val_loss+=_loss
-        with torch.no_grad():
-            auc = val_metric(y_h.softmax(dim=-1), targets)
-            total_auc = val_metric.compute()
+        if not config.yolo_training_enable:
+            with torch.no_grad():
+                auc = val_metric(y_h.softmax(dim=-1), targets)
+                total_auc = val_metric.compute()
 
-        iter.set_description(f"loss: {_loss:.2f} total_loss: {total_val_loss/(idx+1):.2f}, auc:{auc:.2f} ,total_auc:{total_auc:.2f}")
+            iter.set_description(f"loss: {_loss:.2f} total_loss: {total_val_loss/(idx+1):.2f}, auc:{auc:.2f} ,total_auc:{total_auc:.2f}")
+        else:
+            iter.set_description(f"loss: {_loss:.2f} total_loss: {total_val_loss/(idx+1):.2f}")
     ## model save
     if val_loss > total_val_loss:
         val_loss = total_val_loss
         torch.save(model.state_dict(),config.classifier_model_save_path)
-        # print(f"Model saved, {config.classifier_model_save_path}")
+        print(f"Model saved, {config.classifier_model_save_path}")
         logging.info(f"Model saved, {config.classifier_model_save_path}")
-    
-    train_metric.reset()
-    val_metric.reset()
+    if not config.yolo_training_enable:
+        train_metric.reset()
+        val_metric.reset()
