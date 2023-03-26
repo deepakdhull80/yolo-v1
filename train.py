@@ -47,6 +47,16 @@ if os.path.exists(config.classifier_model_save_path):
     # print(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
     logger.info(f"model weights loaded: {config.classifier_model_save_path}, status: {r}")
 
+if config.yolo_training_enable and os.path.exists(f"{config.chkpt_dir}/classifier.pt"):
+    cp_state_dict = torch.load(f"{config.chkpt_dir}/classifier.pt",map_location=device)
+    state_dict = model.state_dict()
+    for k in state_dict:
+        if k in cp_state_dict:
+            state_dict[k] = cp_state_dict[k]
+    
+    f = model.load_state_dict(state_dict)
+    print("yolo base-model load status",f)
+
 model = model.to(device)
 
 # Data
@@ -56,10 +66,12 @@ train_dl, val_dl, c_weigh = get_data_loader(
     yolo_train=config.yolo_training_enable,
     image_size=config.image_size,
     batch_size=config.batch_size,
-    n_worker=config.n_worker
+    n_worker=config.n_worker,
+    s=config.yolo_patches,
+    b=config.yolo_bounding_box
 )
 
-loss_fn = YoloLoss(config.s,config.b,config.n_class,config.lambda_coord, config.noobj) if config.yolo_training_enable else \
+loss_fn = YoloLoss(config.s, config.b, config.n_class, config.lambda_coord, config.noobj) if config.yolo_training_enable else \
     torch.nn.CrossEntropyLoss(weight=c_weigh.to(device),reduction='mean')
 
 optimizer = torch.optim.Adam(model.parameters(), lr = config.lr)

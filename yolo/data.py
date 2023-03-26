@@ -80,7 +80,7 @@ class ImageDataset(Dataset):
 
 
 class YoloDataset(Dataset):
-    def __init__(self, data_path, image_path, fold="train", image_size=448, s=7, b=2, n_class=15):
+    def __init__(self, data_path, image_path, fold="train", image_size=448, s=7, b=2):
         super().__init__()
         self.data_path = data_path
         self.image_path = image_path
@@ -88,45 +88,74 @@ class YoloDataset(Dataset):
         self.fold = fold
         self.s = s
         self.b = b
-        self.n_class = n_class
 
         self.df = pd.read_parquet(f"{data_path}/{fold}.parquet")
         
         self.transform = Compose([
             Resize((image_size, image_size)),
-            ToTensor(),
-            Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # standard rgb normalize value
+            ToTensor()
         ])
 
         self.category = json.load(open(f'{self.data_path}/sampled_categories.json','r'))
         self.val2indx = {
             v:i for i,v in enumerate(self.category.keys())
         }
+        self.n_class = len(list(self.val2indx.keys()))
+        self.image_ids = list(set(self.df['image_id'].to_list()))
 
     def __getitem__(self, index):
-        row = self.image_df.loc[index].to_dict()
-        annotate = self.image_df[self.image_df['image_id'] == row['image_id']]
+        """
+        Args:
+            index (_type_): _description_
         
-        image = Image.open(f"{self.image_path}/{row['file_name']}")
-        
-        h,w = image.height, image.width
-        image = self.transform(image)
+        returns:
+            image, target
+            -------------------------------------------------
+            image -> (3,image_size, image_size)
+            target -> (s,s,b*5+classes), s is patch, b no of object can be present in single 
+                                        patch, 5 -> (is_present, x, y, w, h), classes is no 
+                                        of classes
+        """
+        image_id = self.image_ids[index]
 
-    def scale_box(self, box, original_width, original_height, scale=448):
+        annotate = self.df[self.df['image_id'] == image_id].reset_index(drop=True)
+        file_name = annotate['file_name'].iloc[0]
+        image = Image.open(f"{self.image_path}/{file_name}")
+        if len(image.getbands())!=3:
+            return None, None
+        h,w = image.height, image.width
+
+        image = self.transform(image)
+        target = torch.zeros(
+            self.s, self.s, self.b*5 + self.n_class
+        )
+        for _, row in annotate.iterrows():
+            if str(row['category_id']) not in self.category:
+                continue
+            bbox = self.scale_box(
+                row['bbox'], w, h
+            )
+            sx = int(bbox[0] * self.s) 
+            sy = int(bbox[1] * self.s)
+            v = torch.zeros(self.b*5 + self.n_class)
+            class_idx = self.val2indx[str(row['category_id'])]
+            v[self.b*5 + class_idx] = 1
+            for i in range(self.b):
+                v[i * 5] = 1
+                v[i*5 + 1 : i*5 + 5] = torch.tensor(bbox)
+            target[sx,sy,:] = v.clone()
+        return image, target
+
+    def scale_box(self, box, original_width, original_height):
         x,y,wi,hi = box
         x /= original_width
-        x *= scale
         wi /= original_width
-        wi *= scale
         y /= original_height
-        y *= scale
         hi /= original_height
-        hi *= scale
         return [x,y,wi,hi]
 
-
     def __len__(self):
-        return self.image_df.shape[0]
+        return len(self.image_ids)
 
 
 def collate_fn(batch):
@@ -136,7 +165,7 @@ def collate_fn(batch):
             tbatch.append(i)
     return default_collate(tbatch)
 
-def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, batch_size=8, n_worker=1, pin_memory=False):
+def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, batch_size=8, n_worker=1, pin_memory=False, **kwargs):
     ### it should return train and val set, train and val split is done randomly with evenly distributed data
     """# DataLoader
 
@@ -148,23 +177,40 @@ def get_data_loader(data_path, image_path ,yolo_train=False, image_size=448, bat
         batch_size (int, optional): _description_. Defaults to 8.
         n_worker (int, optional): _description_. Defaults to 1.
         pin_memory (bool, optional): _description_. Defaults to False.
+        s (int): Yolo number of patches, required when yolo training. Defaults to 7
+        b (int): Yolo bounding box, required when yolo training. Defaults to 1
 
     Returns:
         tuple: (DataLoader,DataLoader,Tensor), train_dataloader, val_dataloader, class_weights
     """
+    train_ds, val_ds = None, None
     if yolo_train:
-        raise NotImplementedError()
-    
-    train_ds, val_ds = ImageDataset(
-        data_path=data_path,
-        image_path=image_path,
-        fold='train',image_size=image_size
-    ), ImageDataset(
-        data_path=data_path,
-        image_path=image_path,
-        fold='val',image_size=image_size
-    )
-
+        train_ds, val_ds = YoloDataset(
+            data_path="data",
+            image_path="data/val2017",
+            fold='val',
+            image_size=image_size,
+            s=kwargs.get("yolo_patches",7),
+            b=kwargs.get("yolo_bounding_box",1)
+        ), YoloDataset(
+            data_path="data",
+            image_path="data/val2017",
+            fold='val',
+            image_size=image_size,
+            s=kwargs.get("yolo_patches",7),
+            b=kwargs.get("yolo_bounding_box",1)
+        )
+    else:
+        train_ds, val_ds = ImageDataset(
+            data_path=data_path,
+            image_path=image_path,
+            fold='train',image_size=image_size
+        ), ImageDataset(
+            data_path=data_path,
+            image_path=image_path,
+            fold='val',image_size=image_size
+        )
+    assert train_ds != None or val_ds != None, "dataloader strategy failed for yolo_train={yolo_train}"
     return DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=pin_memory), \
             DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=n_worker, collate_fn=lambda x:collate_fn(x), pin_memory=pin_memory), \
             train_ds.class_weights

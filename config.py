@@ -12,7 +12,7 @@ if os.path.exists(f"{data_base_path}/sampled_categories.json"):
 
 #model
 device='cuda'
-yolo_training_enable = False
+yolo_training_enable = True
 
 input_channel = 3
 bottle_neck_feature_size = 1024
@@ -22,11 +22,13 @@ classifier_model_save_path = f"{chkpt_dir}/yolo.pt" \
                             if yolo_training_enable \
                                 else f"{chkpt_dir}/classifier.pt"
 
-yolo_bounding_box = 2
+yolo_bounding_box = 1
 yolo_patches = 7
 n_worker = 2
 lr=0.003
 batch_size = 16*3
+lambda_noobj = 0.5
+lambda_coord = 5
 
 ### yolo model architecture
 bn_enable = False

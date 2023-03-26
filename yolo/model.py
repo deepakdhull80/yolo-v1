@@ -53,8 +53,6 @@ class Yolo(nn.Module):
             nn.Sigmoid()
         )
 
-
-
     def forward(self, x):
         b = x.shape[0]
         x = self.base(x)
